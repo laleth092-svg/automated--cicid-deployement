@@ -1,0 +1,6 @@
+{
+  "name": "Automated CI/CD Deployment System",
+  "description": "A lightweight student DevOps engineering dashboard demonstrating a 5-stage automated CI/CD pipeline, build history, deployment status, and Docker image metadata.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
