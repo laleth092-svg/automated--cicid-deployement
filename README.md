@@ -81,6 +81,15 @@ A lightweight, beginner-friendly student DevOps engineering web application buil
    npm run preview
    ```
 
+## Deploying to GitHub Pages
+
+This project is preconfigured with `base: './'` in `vite.config.ts` and includes `.github/workflows/deploy.yml` so assets load cleanly under any repository subpath (`https://<username>.github.io/<repo-name>/`).
+
+1. Push the repository to GitHub on the `main` branch.
+2. In your GitHub repository, open **Settings → Pages**.
+3. Under **Build and deployment → Source**, select **GitHub Actions** (do **not** deploy from the raw `main` branch root, as browsers cannot execute uncompiled `.tsx` source files).
+4. Push a commit or manually trigger the **Deploy to GitHub Pages** workflow in the **Actions** tab to build `dist/` and publish the site.
+
 ## Extending Beyond Demonstration Data
 
 When deploying this project into a real DevOps environment, replace the static arrays in `src/data/demoData.ts` with authenticated backend endpoints that read from your CI/CD provider (for example, GitHub Actions workflow runs, Docker Registry v2 manifests, or Kubernetes deployment status).
