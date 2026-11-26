@@ -21,6 +21,8 @@ export type FailureScenario =
   | 'deployment';
 
 export interface PipelineRunConfig {
+  repositoryUrl?: string;
+  repositorySlug?: string;
   branch: string;
   targetEnvironment: EnvironmentName;
   commitMessage: string;
@@ -48,6 +50,7 @@ export interface BuildRecord {
   id: string;
   buildNumber: number;
   date: string;
+  repositorySlug?: string;
   branch: string;
   targetEnvironment: EnvironmentName;
   commitSha: string;

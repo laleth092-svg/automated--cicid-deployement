@@ -1,10 +1,11 @@
-import { Menu, Play } from 'lucide-react';
+import { Menu, Play, Search } from 'lucide-react';
 import type { NavigationSection } from '../types/cicd';
 
 interface TopBarProps {
   activeSection: NavigationSection;
   isPipelineRunning: boolean;
   onRunPipeline: () => void;
+  onOpenGitHubSearch: () => void;
   onOpenMobileMenu: () => void;
 }
 
@@ -21,6 +22,7 @@ export function TopBar({
   activeSection,
   isPipelineRunning,
   onRunPipeline,
+  onOpenGitHubSearch,
   onOpenMobileMenu,
 }: TopBarProps) {
   return (
@@ -51,7 +53,17 @@ export function TopBar({
         </div>
       </div>
 
-      <div className="flex items-center shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
+        <button
+          type="button"
+          onClick={onOpenGitHubSearch}
+          title="Paste GitHub URL to run pipeline"
+          aria-label="Paste GitHub URL to run pipeline"
+          className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition-colors duration-150 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+        >
+          <Search className="w-4 h-4" aria-hidden="true" />
+        </button>
+
         <button
           type="button"
           onClick={onRunPipeline}

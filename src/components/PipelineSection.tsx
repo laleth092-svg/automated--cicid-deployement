@@ -134,6 +134,16 @@ export function PipelineSection({
             <span className="text-xs font-mono text-slate-600 tabular-nums">
               Demo Run #{activeBuildNumber}
             </span>
+            {runConfig.repositorySlug && (
+              <>
+                <span className="text-slate-300" aria-hidden="true">
+                  ·
+                </span>
+                <span className="text-xs font-mono text-blue-700">
+                  {runConfig.repositorySlug}
+                </span>
+              </>
+            )}
             <span className="text-slate-300" aria-hidden="true">
               ·
             </span>

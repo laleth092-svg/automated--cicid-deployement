@@ -89,6 +89,7 @@ export function BuildHistoryTable({
         if (!query) return true;
         return (
           `#${build.buildNumber}`.includes(query) ||
+          (build.repositorySlug?.toLowerCase().includes(query) ?? false) ||
           build.commitMessage.toLowerCase().includes(query) ||
           build.branch.toLowerCase().includes(query) ||
           build.targetEnvironment.toLowerCase().includes(query) ||
@@ -452,6 +453,9 @@ export function BuildHistoryTable({
                           {build.commitMessage}
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500 font-mono">
+                          {build.repositorySlug
+                            ? `${build.repositorySlug} · `
+                            : ''}
                           {build.branch} · {build.targetEnvironment} ·{' '}
                           {build.commitSha} · {build.author}
                         </p>

@@ -4,11 +4,14 @@ import { BuildHistoryTable } from './components/BuildHistoryTable';
 import { DemoNotice } from './components/DemoNotice';
 import { DeploymentSection } from './components/DeploymentSection';
 import { DockerImageSection } from './components/DockerImageSection';
+import { GitHubUrlModal } from './components/GitHubUrlModal';
 import { HomeView } from './components/HomeView';
 import { PipelineSection } from './components/PipelineSection';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import {
+  DEFAULT_REPOSITORY_SLUG,
+  DEFAULT_REPOSITORY_URL,
   DEFAULT_RUN_CONFIG,
   INITIAL_BUILD_HISTORY,
   INITIAL_DEPLOYMENTS,
@@ -86,6 +89,7 @@ export default function App() {
 
   const [activeSection, setActiveSection] = useState<NavigationSection>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [githubModalOpen, setGithubModalOpen] = useState(false);
 
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_PIPELINE_STAGES);
   const [builds, setBuilds] = useState<BuildRecord[]>(
@@ -156,14 +160,36 @@ export default function App() {
     if (isPipelineRunning) return;
     clearScheduledTimers();
 
-    const activeConfig = overrideConfig ?? runConfig;
+    const activeConfig: PipelineRunConfig = {
+      repositoryUrl:
+        overrideConfig?.repositoryUrl ??
+        runConfig.repositoryUrl ??
+        DEFAULT_REPOSITORY_URL,
+      repositorySlug:
+        overrideConfig?.repositorySlug ??
+        runConfig.repositorySlug ??
+        DEFAULT_REPOSITORY_SLUG,
+      branch: overrideConfig?.branch ?? runConfig.branch,
+      targetEnvironment:
+        overrideConfig?.targetEnvironment ?? runConfig.targetEnvironment,
+      commitMessage: overrideConfig?.commitMessage ?? runConfig.commitMessage,
+      failureScenario:
+        overrideConfig?.failureScenario ?? runConfig.failureScenario,
+    };
+
     if (overrideConfig) {
-      setRunConfig(overrideConfig);
+      setRunConfig(activeConfig);
     }
 
     if (activeSection === 'home') {
       setActiveSection('dashboard');
     }
+
+    const repoSlug = activeConfig.repositorySlug ?? DEFAULT_REPOSITORY_SLUG;
+    const repoUrl = activeConfig.repositoryUrl ?? DEFAULT_REPOSITORY_URL;
+    const repoLower = repoSlug.toLowerCase();
+    const repoAppName = repoLower.split('/')[1] ?? 'cicd-web-app';
+    const imageRepo = `ghcr.io/${repoLower}`;
 
     const nextBuildNumber =
       Math.max(...builds.map((b) => b.buildNumber), activeBuildNumber) + 1;
@@ -180,25 +206,37 @@ export default function App() {
     const failureIndex = getFailureIndex(activeConfig.failureScenario);
     const commitMsg =
       activeConfig.commitMessage.trim() ||
-      'Simulated automated build and container release';
+      `Simulated build for ${repoSlug}`;
 
     setActiveBuildNumber(nextBuildNumber);
     setIsPipelineRunning(true);
     setActivityNotice(
-      `Started demonstration run #${nextBuildNumber} on branch "${activeConfig.branch}" targeting ${activeConfig.targetEnvironment}.`
+      `Started demonstration run #${nextBuildNumber} for ${repoSlug} (${activeConfig.branch}) targeting ${activeConfig.targetEnvironment}.`
     );
 
     setStages(
-      INITIAL_PIPELINE_STAGES.map((stage) => ({
-        ...stage,
-        status: 'pending',
-        duration: '—',
-        startedAt: 'Queued',
-        command: stage.command
-          .replaceAll('main', activeConfig.branch)
-          .replaceAll('v1.4.2-demo', nextVersion),
-        logs: ['[Demo Log] Waiting for previous stage to complete...'],
-      }))
+      INITIAL_PIPELINE_STAGES.map((stage, idx) => {
+        const dynamicCommand =
+          idx === 0
+            ? `git clone ${repoUrl}.git && git checkout ${activeConfig.branch}`
+            : stage.command
+                .replaceAll('main', activeConfig.branch)
+                .replaceAll(
+                  'ghcr.io/devops-student/cicd-web-app',
+                  imageRepo
+                )
+                .replaceAll('cicd-web-app', repoAppName)
+                .replaceAll('v1.4.2-demo', nextVersion);
+
+        return {
+          ...stage,
+          status: 'pending',
+          duration: '—',
+          startedAt: 'Queued',
+          command: dynamicCommand,
+          logs: ['[Demo Log] Waiting for previous stage to complete...'],
+        };
+      })
     );
 
     const stageTimings = [
@@ -265,12 +303,12 @@ export default function App() {
                   '[Demo Log] Error: Automated Testing failed. Docker Build, Push, and Deployment were skipped.',
                 ],
                 2: [
-                  `[Demo Log] Building Docker image ${INITIAL_DOCKER_IMAGE.repository}:${nextVersion}...`,
+                  `[Demo Log] Building Docker image ${imageRepo}:${nextVersion}...`,
                   '[Demo Log] ERROR: COPY docker/nginx.conf failed — file not found in build context',
                   '[Demo Log] Error: Docker Build failed. Image Push and Deployment were aborted.',
                 ],
                 4: [
-                  `[Demo Log] Rolling out ${nextVersion} to ${activeConfig.targetEnvironment}...`,
+                  `[Demo Log] Rolling out ${nextVersion} (${repoSlug}) to ${activeConfig.targetEnvironment}...`,
                   '[Demo Log] ERROR: Readiness probe /healthz timed out after 15s (HTTP 502)',
                   '[Demo Log] Error: Deployment halted; previous healthy release remains active.',
                 ],
@@ -290,6 +328,8 @@ export default function App() {
                 .replaceAll('v1.4.2-demo', nextVersion)
                 .replaceAll('9a4f2c1', nextSha)
                 .replaceAll('"main"', `"${activeConfig.branch}"`)
+                .replaceAll('ghcr.io/devops-student', `ghcr.io/${repoLower.split('/')[0] ?? 'devops-student'}`)
+                .replaceAll('Refine responsive layout and unit tests', commitMsg)
             );
 
             return {
@@ -313,6 +353,7 @@ export default function App() {
             id: `build-${nextBuildNumber}`,
             buildNumber: nextBuildNumber,
             date: nowLabel,
+            repositorySlug: repoSlug,
             branch: activeConfig.branch,
             targetEnvironment: activeConfig.targetEnvironment,
             commitSha: nextSha,
@@ -343,17 +384,18 @@ export default function App() {
           }
 
           setActivityNotice(
-            `Demo run #${nextBuildNumber} stopped at ${stageName}. Existing ${activeConfig.targetEnvironment} release was protected.`
+            `Demo run #${nextBuildNumber} (${repoSlug}) stopped at ${stageName}. Existing ${activeConfig.targetEnvironment} release was protected.`
           );
           setIsPipelineRunning(false);
         } else if (step.index === 4) {
           const newDigest = `sha256:${nextSha}9d7e3a204b1c5d6e7f890123456b29e`;
-          const fullImageRef = `${INITIAL_DOCKER_IMAGE.repository}:${nextVersion}`;
+          const fullImageRef = `${imageRepo}:${nextVersion}`;
 
           const passedBuild: BuildRecord = {
             id: `build-${nextBuildNumber}`,
             buildNumber: nextBuildNumber,
             date: nowLabel,
+            repositorySlug: repoSlug,
             branch: activeConfig.branch,
             targetEnvironment: activeConfig.targetEnvironment,
             commitSha: nextSha,
@@ -363,7 +405,7 @@ export default function App() {
             duration: '2m 03s',
             durationSeconds: 123,
             imageTag: nextVersion,
-            stageSummary: `5 of 5 stages passed · Deployed to ${activeConfig.targetEnvironment}`,
+            stageSummary: `5 of 5 stages passed · Deployed ${repoSlug} to ${activeConfig.targetEnvironment}`,
           };
 
           setBuilds((prev) => [passedBuild, ...prev]);
@@ -394,6 +436,7 @@ export default function App() {
 
           setDockerImage((prev) => ({
             ...prev,
+            repository: imageRepo,
             tag: nextVersion,
             digest: newDigest,
             pushedAt: nowLabel,
@@ -401,7 +444,7 @@ export default function App() {
           }));
 
           setActivityNotice(
-            `Demo run #${nextBuildNumber} passed all 5 stages and deployed ${nextVersion} to ${activeConfig.targetEnvironment}.`
+            `Demo run #${nextBuildNumber} for ${repoSlug} passed all 5 stages and deployed ${nextVersion} to ${activeConfig.targetEnvironment}.`
           );
           setIsPipelineRunning(false);
         }
@@ -412,7 +455,10 @@ export default function App() {
   };
 
   const handleRerunBuild = (build: BuildRecord) => {
+    const slug = build.repositorySlug ?? DEFAULT_REPOSITORY_SLUG;
     const config: PipelineRunConfig = {
+      repositorySlug: slug,
+      repositoryUrl: `https://github.com/${slug}`,
       branch: build.branch,
       targetEnvironment: build.targetEnvironment,
       commitMessage: `Re-run of #${build.buildNumber}: ${build.commitMessage}`,
@@ -573,7 +619,16 @@ export default function App() {
           activeSection={activeSection}
           isPipelineRunning={isPipelineRunning}
           onRunPipeline={() => handleRunPipeline()}
+          onOpenGitHubSearch={() => setGithubModalOpen(true)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+        />
+
+        <GitHubUrlModal
+          isOpen={githubModalOpen}
+          currentRepoUrl={runConfig.repositoryUrl ?? DEFAULT_REPOSITORY_URL}
+          isPipelineRunning={isPipelineRunning}
+          onClose={() => setGithubModalOpen(false)}
+          onRunFromGitHub={(config) => handleRunPipeline(config)}
         />
 
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

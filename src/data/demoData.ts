@@ -12,7 +12,12 @@ import type {
  * container registry, or cloud deployment cluster.
  */
 
+export const DEFAULT_REPOSITORY_SLUG = 'devops-student/cicd-web-app';
+export const DEFAULT_REPOSITORY_URL = `https://github.com/${DEFAULT_REPOSITORY_SLUG}`;
+
 export const DEFAULT_RUN_CONFIG: PipelineRunConfig = {
+  repositoryUrl: DEFAULT_REPOSITORY_URL,
+  repositorySlug: DEFAULT_REPOSITORY_SLUG,
   branch: 'main',
   targetEnvironment: 'Production',
   commitMessage: 'Release automated build with updated UI and tests',
